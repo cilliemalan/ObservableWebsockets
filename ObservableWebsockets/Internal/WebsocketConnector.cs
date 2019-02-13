@@ -11,7 +11,7 @@ namespace ObservableWebsockets.Internal
 {
     internal class WebsocketConnector
     {
-        internal static async Task HandleWebsocketAsync(string path, WebSocket webSocket, Action<IObservableWebsocket> acceptHandler)
+        internal static async Task HandleWebsocketAsync(string path, WebSocket webSocket, ObservableWebsocketOptions options)
         {
             var messageQueue = new System.Collections.Concurrent.ConcurrentQueue<Tuple<byte[], WebSocketMessageType, bool>>();
             var messageSentAre = new AsyncAutoResetEvent();
@@ -139,7 +139,7 @@ namespace ObservableWebsockets.Internal
                     incomingMessages.Subscribe);
 
                 await Task.Yield();
-                acceptHandler(handler);
+                options.Acceptor(handler);
                 await Task.Yield();
                 var readwait = ReadLoopAsync();
                 var writewait = WriteLoopAsync();

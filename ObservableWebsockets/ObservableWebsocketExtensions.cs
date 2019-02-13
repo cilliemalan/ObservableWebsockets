@@ -15,10 +15,25 @@ namespace Owin
         /// Bind observable websockets to a pipeline.
         /// </summary>
         /// <param name="app">The <see cref="IAppBuilder"/>.</param>
-        /// <param name="onAccept">A method that will be invoked when a websocket connection is established.</param>
-        public static IAppBuilder UseObservableWebsockets(this IAppBuilder app, Action<IObservableWebsocket> onAccept)
+        /// <param name="configure">An action called to configure the observable websockets.</param>
+        public static IAppBuilder UseObservableWebsockets(this IAppBuilder app, Action<ObservableWebsocketOptions> configure)
         {
-            var mw = new WebsocketMiddleware(onAccept);
+            if (app == null) throw new ArgumentNullException(nameof(app));
+            if (configure == null) throw new ArgumentNullException(nameof(configure));
+
+            var options = new ObservableWebsocketOptions();
+            configure(options);
+            return UseObservableWebsockets(app, options);
+        }
+
+        /// <summary>
+        /// Bind observable websockets to a pipeline.
+        /// </summary>
+        /// <param name="app">The <see cref="IApplicationBuilder"/>.</param>
+        /// <param name="options">The observable websocket options</param>
+        public static IAppBuilder UseObservableWebsockets(this IAppBuilder app, ObservableWebsocketOptions options)
+        {
+            var mw = new WebsocketMiddleware(options);
             return app.Use(mw);
         }
     }
@@ -32,16 +47,39 @@ namespace Microsoft.AspNetCore.Builder
         /// Bind observable websockets to a pipeline.
         /// </summary>
         /// <param name="app">The <see cref="IApplicationBuilder"/>.</param>
-        /// <param name="onAccept">A method that will be invoked when a websocket connection is established.</param>
-        public static IApplicationBuilder UseObservableWebsockets(this IApplicationBuilder app, Action<IObservableWebsocket> onAccept)
+        /// <param name="configure">An action called to configure the observable websockets.</param>
+        public static IApplicationBuilder UseObservableWebsockets(this IApplicationBuilder app, Action<ObservableWebsocketOptions> configure)
         {
+            if (app == null) throw new ArgumentNullException(nameof(app));
+            if (configure == null) throw new ArgumentNullException(nameof(configure));
+
+            var options = new ObservableWebsocketOptions();
+            configure(options);
+            return UseObservableWebsockets(app, options);
+        }
+
+        /// <summary>
+        /// Bind observable websockets to a pipeline.
+        /// </summary>
+        /// <param name="app">The <see cref="IApplicationBuilder"/>.</param>
+        /// <param name="options">The observable websocket options</param>
+        public static IApplicationBuilder UseObservableWebsockets(this IApplicationBuilder app, ObservableWebsocketOptions options)
+        {
+            if (app == null) throw new ArgumentNullException(nameof(app));
+            if (options == null) throw new ArgumentNullException(nameof(options));
+
+            if (options.Acceptor == null)
+            {
+                throw new InvalidOperationException("The ObservableWebsocketOptions must have Acceptor set. For example, use app.UseObservableWebsockets(c => c.OnAccept(ws => { ... }))");
+            }
+
             return app.Use(async (context, next) =>
             {
-                if (context.WebSockets.IsWebSocketRequest)
+                if (context.WebSockets.IsWebSocketRequest && (options.ConnectionEvaluator?.Invoke(context) ?? true))
                 {
                     var webSocket = await context.WebSockets.AcceptWebSocketAsync();
 
-                    await WebsocketConnector.HandleWebsocketAsync(context.Request.Path, webSocket, onAccept);
+                    await WebsocketConnector.HandleWebsocketAsync(context.Request.Path, webSocket, options);
                 }
                 else
                 {

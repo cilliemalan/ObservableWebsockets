@@ -27,11 +27,11 @@ namespace ObservableWebsockets.Tests.NetCore
 #if NETSTANDARD
         private static string GetHost() => $"localhost:{22000 + Interlocked.Increment(ref r)}";
         private static IDisposable BuildAppAsync(string host, Action<IObservableWebsocket> onAccept) =>
-            WebHost.StartWith($"http://{host}", app => app.UseWebSockets().UseObservableWebsockets(onAccept));
+            WebHost.StartWith($"http://{host}", app => app.UseWebSockets().UseObservableWebsockets(c=> c.OnAccept(onAccept)));
 #elif OWIN
         private static string GetHost() => $"localhost:{32000 + Interlocked.Increment(ref r)}";
         private static IDisposable BuildAppAsync(string host, Action<IObservableWebsocket> onAccept) =>
-            WebApp.Start($"http://{host}", app => app.UseObservableWebsockets(onAccept));
+            WebApp.Start($"http://{host}", app => app.UseObservableWebsockets(c=> c.OnAccept(onAccept)));
 #endif
 
         [Fact(DisplayName = "Messages sent from the client are observed on the server")]

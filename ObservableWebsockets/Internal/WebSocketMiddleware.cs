@@ -22,11 +22,11 @@ namespace ObservableWebsockets.Internal
     internal class WebsocketMiddleware
     {
         private AppFunc _next;
-        private readonly Action<IObservableWebsocket> _onAccept;
+        private readonly ObservableWebsocketOptions _options;
 
-        public WebsocketMiddleware(Action<IObservableWebsocket> onAccept)
+        public WebsocketMiddleware(ObservableWebsocketOptions options)
         {
-            _onAccept = onAccept;
+            _options = options;
         }
 
         public void Initialize(AppFunc next)
@@ -37,9 +37,10 @@ namespace ObservableWebsockets.Internal
         public async Task Invoke(IDictionary<string, object> env)
         {
             var accept = env.TryGetValue("websocket.Accept", out var wsa) ? (WebSocketAccept)wsa : null;
-            if (accept != null)
+            if (accept != null && (_options.ConnectionEvaluator?.Invoke(env) ?? true))
             {
-                env.TryGetValue("owin.RequestPath", out var path);
+                env.TryGetValue("owin.RequestPath", out var oPath);
+                var path = (string)oPath;
                 var wsProtocolOpt = env.TryGetValue("owin.RequestHeaders", out var headers) ?
                     ((IDictionary<string, string[]>)headers).TryGetValue("Sec-WebSocket-Protocol", out var secWsProtocol) ?
                         secWsProtocol?[0]?.Split(',')?.FirstOrDefault()?.Trim() : null : null;
@@ -49,7 +50,8 @@ namespace ObservableWebsockets.Internal
                     acceptOptions["websocket.SubProtocol"] = wsProtocolOpt;
                 }
 
-                accept(acceptOptions, (ws) => AcceptSocketAsync(path as string ?? "/", ws));
+
+                accept(acceptOptions, (ws) => AcceptSocketAsync(path, ws));
                 env["owin.ResponseStatusCode"] = (int)HttpStatusCode.SwitchingProtocols;
             }
             else
@@ -60,15 +62,15 @@ namespace ObservableWebsockets.Internal
 
         private async Task AcceptSocketAsync(string path, IDictionary<string, object> ws)
         {
-            if (ws.TryGetValue("System.Net.WebSockets.WebSocketContext", out var _wsctx))
+            if (!_options.ForceOwinWebsockets && ws.TryGetValue("System.Net.WebSockets.WebSocketContext", out var _wsctx))
             {
                 WebSocketContext wsctx = (WebSocketContext)_wsctx;
-                await WebsocketConnector.HandleWebsocketAsync(path, wsctx.WebSocket, _onAccept);
+                await WebsocketConnector.HandleWebsocketAsync(path, wsctx.WebSocket, _options);
             }
             else
             {
                 var wrapper = new OwinWebsocketWrapper(ws);
-                await WebsocketConnector.HandleWebsocketAsync(path, wrapper, _onAccept);
+                await WebsocketConnector.HandleWebsocketAsync(path, wrapper, _options);
             }
         }
     }
