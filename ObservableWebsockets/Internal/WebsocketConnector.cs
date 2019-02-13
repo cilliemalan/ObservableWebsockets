@@ -78,8 +78,6 @@ namespace ObservableWebsockets.Internal
             Exception caughtException = null;
             try
             {
-                var readwait = ReadLoopAsync();
-                var writewait = WriteLoopAsync();
                 var handler = new WebSocketHandler((m, t, e) =>
                     {
                         messageQueue?.Enqueue(Tuple.Create(m, t, e));
@@ -90,6 +88,9 @@ namespace ObservableWebsockets.Internal
 
                 await Task.Yield();
                 acceptHandler(handler);
+                await Task.Yield();
+                var readwait = ReadLoopAsync();
+                var writewait = WriteLoopAsync();
                 await Task.WhenAll(readwait, writewait);
             }
             catch (Exception ex)
