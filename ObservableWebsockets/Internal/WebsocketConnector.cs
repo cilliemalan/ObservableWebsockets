@@ -21,18 +21,43 @@ namespace ObservableWebsockets.Internal
 
             var incomingMessages = new Subject<(ArraySegment<byte> message, WebSocketMessageType messageType, bool endOfMessage)>();
 
-            bool hasCompleted = false;
-            cancellationToken.Register(() =>
+
+            // run to complete the observable sequence. Called on error, cancellation, or close.
+            int hasCompleted = 0;
+            void Complete(Exception ex = null)
             {
-                if (!hasCompleted)
+                if (Interlocked.CompareExchange(ref hasCompleted, 1, 0) == 0)
                 {
-                    incomingMessages.OnCompleted();
-                    hasCompleted = true;
+                    if (ex != null)
+                    {
+                        try
+                        {
+                            incomingMessages.OnError(ex);
+                        }
+                        catch { }
+                    }
+                    else
+                    {
+                        try
+                        {
+                            incomingMessages.OnCompleted();
+                        }
+                        catch (Exception e)
+                        {
+                            try
+                            {
+                                incomingMessages.OnError(AggregateExceptions(ex, e));
+                            }
+                            catch { }
+                        }
+                    }
                 }
-            });
+            }
+
+            cancellationToken.Register(() => Complete());
 
             bool isClosed() => cts.IsCancellationRequested ||
-                hasCompleted ||
+                Volatile.Read(ref hasCompleted) == 1 ||
                 webSocket.State != WebSocketState.Open;
 
             async Task ReadLoopAsync()
@@ -44,7 +69,16 @@ namespace ObservableWebsockets.Internal
                         var buffer = new ArraySegment<byte>(new byte[1024]);
                         var receiveStatus = await webSocket.ReceiveAsync(buffer, cancellationToken);
                         var properSegment = new ArraySegment<byte>(buffer.Array, 0, receiveStatus.Count);
-                        incomingMessages.OnNext((properSegment, receiveStatus.MessageType, receiveStatus.EndOfMessage));
+                        try
+                        {
+                            incomingMessages.OnNext((properSegment, receiveStatus.MessageType, receiveStatus.EndOfMessage));
+                        }
+                        catch (Exception ex)
+                        {
+                            Complete(ex);
+                            cts.Cancel();
+                            throw;
+                        }
                     }
                     catch (WebSocketException)
                     {
@@ -94,7 +128,6 @@ namespace ObservableWebsockets.Internal
                 cts.Cancel();
             }
 
-            Exception caughtException = null;
             try
             {
                 var handler = new WebSocketHandler((m, t, e) =>
@@ -112,33 +145,58 @@ namespace ObservableWebsockets.Internal
                 var writewait = WriteLoopAsync();
                 await Task.WhenAll(readwait, writewait);
             }
+            catch (OperationCanceledException)
+            {
+            }
             catch (Exception ex)
             {
-                caughtException = ex;
+                Complete(ex);
             }
             finally
             {
-                messageQueue = null;
-            }
-
-            if (!hasCompleted)
-            {
-                if (caughtException != null &&
-                    !(caughtException is WebSocketException wse && wse.WebSocketErrorCode == WebSocketError.ConnectionClosedPrematurely) &&
-                    !(caughtException is OperationCanceledException))
-                {
-                    incomingMessages.OnError(caughtException);
-                }
-
-                incomingMessages.OnCompleted();
-                hasCompleted = true;
+                Complete();
             }
 
             try
             {
-                await webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Closing", CancellationToken.None);
+                if (webSocket.State == WebSocketState.Open || webSocket.State == WebSocketState.CloseReceived)
+                {
+                    await webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, null, default);
+                }
             }
             catch { }
+        }
+
+        private static Exception AggregateExceptions(Exception ex, Exception e)
+        {
+            if (ex == null)
+            {
+                ex = e;
+            }
+            else if (ex is AggregateException ae)
+            {
+                if (e is AggregateException nae)
+                {
+                    ex = new AggregateException(ae.InnerExceptions.Concat(nae.InnerExceptions));
+                }
+                else
+                {
+                    ex = new AggregateException(ae.InnerExceptions.Concat(new[] { e }));
+                }
+            }
+            else
+            {
+                if (e is AggregateException nae)
+                {
+                    ex = new AggregateException(new[] { ex }.Concat(nae.InnerExceptions));
+                }
+                else
+                {
+                    ex = new AggregateException(new[] { ex, e });
+                }
+            }
+
+            return ex;
         }
     }
 }
