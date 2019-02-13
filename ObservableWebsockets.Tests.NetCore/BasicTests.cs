@@ -230,5 +230,60 @@ namespace ObservableWebsockets.Tests.NetCore
                 Assert.Equal(0, await numMessagesReceived);
             }
         }
+
+        [Fact(DisplayName = "The connection closes normally on observer error")]
+        public async Task ServerFailureCloseTest()
+        {
+            var host = GetHost();
+            var connectionReceived = Trigger.Create<string>("Never connected");
+
+            using (BuildAppAsync(host, ws =>
+            {
+                connectionReceived.Mark(ws.Path);
+                ws.Send(Encoding.UTF8.GetBytes("From Server"), WebSocketMessageType.Text, true);
+                ws.Subscribe(z => throw new Exception());
+            }))
+            {
+                using (var ws = new ClientWebSocket())
+                {
+                    await ws.ConnectAsync(new Uri($"ws://{host}/thepath"), default);
+
+                    var msg = await ws.ReceiveAsync();
+                    Assert.Equal("From Server", msg);
+
+                    await ws.SendTextAsync("testing 123");
+                    await ws.ReceiveCloseAsync();
+                }
+            }
+        }
+
+        [Fact(DisplayName = "The server produces observable error on observer error")]
+        public async Task ObservableErrorTest()
+        {
+            var host = GetHost();
+            var connectionReceived = Trigger.Create<string>("Never connected");
+            var errorReceived = Trigger.Create<Exception>("never got an exception");
+
+            using (BuildAppAsync(host, ws =>
+            {
+                connectionReceived.Mark(ws.Path);
+                ws.Send(Encoding.UTF8.GetBytes("From Server"), WebSocketMessageType.Text, true);
+                ws.Subscribe(z => throw new Exception("server error"), errorReceived.Mark, () => { });
+            }))
+            {
+                using (var ws = new ClientWebSocket())
+                {
+                    await ws.ConnectAsync(new Uri($"ws://{host}/thepath"), default);
+
+                    var msg = await ws.ReceiveAsync();
+                    Assert.Equal("From Server", msg);
+
+                    await ws.SendTextAsync("testing 123");
+                    await ws.ReceiveCloseAsync();
+                }
+
+                Assert.Equal("server error", (await errorReceived).Message);
+            }
+        }
     }
 }
