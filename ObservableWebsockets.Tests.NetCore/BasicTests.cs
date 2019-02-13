@@ -28,10 +28,14 @@ namespace ObservableWebsockets.Tests.NetCore
         private static string GetHost() => $"localhost:{22000 + Interlocked.Increment(ref r)}";
         private static IDisposable BuildAppAsync(string host, Action<IObservableWebsocket> onAccept) =>
             WebHost.StartWith($"http://{host}", app => app.UseWebSockets().UseObservableWebsockets(c=> c.OnAccept(onAccept)));
+        private static IDisposable BuildAppAsync(string host, Action<ObservableWebsocketOptions> configure, Action<IObservableWebsocket> onAccept) =>
+            WebHost.StartWith($"http://{host}", app => app.UseWebSockets().UseObservableWebsockets(c => { configure(c); c.OnAccept(onAccept); }));
 #elif OWIN
         private static string GetHost() => $"localhost:{32000 + Interlocked.Increment(ref r)}";
         private static IDisposable BuildAppAsync(string host, Action<IObservableWebsocket> onAccept) =>
-            WebApp.Start($"http://{host}", app => app.UseObservableWebsockets(c=> c.OnAccept(onAccept)));
+            WebApp.Start($"http://{host}", app => app.UseObservableWebsockets(c => c.OnAccept(onAccept)));
+        private static IDisposable BuildAppAsync(string host, Action<ObservableWebsocketOptions> configure, Action<IObservableWebsocket> onAccept) =>
+            WebApp.Start($"http://{host}", app => app.UseObservableWebsockets(c => { configure(c); c.OnAccept(onAccept); }));
 #endif
 
         [Fact(DisplayName = "Messages sent from the client are observed on the server")]
@@ -283,6 +287,44 @@ namespace ObservableWebsockets.Tests.NetCore
                 }
 
                 Assert.Equal("server error", (await errorReceived).Message);
+            }
+        }
+
+        [Fact(DisplayName = "Messages sent from the client are observed on the server when a path filter is set")]
+        public async Task BasicFilterTest()
+        {
+            var host = GetHost();
+            var connectionReceived = Trigger.Create<string>("Never connected");
+            var messageReceived = Trigger.Create<string>("Message never received");
+
+            using (BuildAppAsync(host, c => c.FilterPath("/thepath"), ws =>
+            {
+                connectionReceived.Mark(ws.Path);
+                ws.Take(1).Subscribe(m => messageReceived.Mark(m.message.Decode()));
+            }))
+            {
+                var ws = new ClientWebSocket();
+                await ws.ConnectAsync(new Uri($"ws://{host}/thepath"), default);
+
+                await ws.SendTextAsync("Hello World");
+                Assert.Equal("/thepath", await connectionReceived);
+                Assert.Equal("Hello World", await messageReceived);
+
+                await ws.CloseAsync();
+            }
+        }
+
+        [Fact(DisplayName = "Connections fail when path filter is set and connecting incorrectly")]
+        public async Task FilterErrorTest()
+        {
+            var host = GetHost();
+
+            using (BuildAppAsync(host, c => c.FilterPath("/thecorrectpath"), ws =>
+            {
+            }))
+            {
+                var ws = new ClientWebSocket();
+                await Assert.ThrowsAnyAsync<WebSocketException>(() => ws.ConnectAsync(new Uri($"ws://{host}/theincorrectpath"), default));
             }
         }
     }
