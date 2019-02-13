@@ -8,12 +8,6 @@ using System.Threading.Tasks;
 
 namespace ObservableWebsockets.Internal
 {
-    using AppFunc = Func<IDictionary<string, object>, Task>;
-    using WebSocketAccept = Action<
-                                    IDictionary<string, object>, // WebSocket Accept parameters
-                                    Func< // WebSocketFunc callback
-                                        IDictionary<string, object>, // WebSocket environment
-                                        Task>>;
     using WebSocketCloseAsync = Func<
                                      int, // closeStatus
                                      string, // closeDescription
@@ -27,19 +21,22 @@ namespace ObservableWebsockets.Internal
     //    int, // messageType
     //    bool, // endOfMessage
     //    int>>>; // count
-    // closeStatusDescription
 
     using WebSocketSendAsync = System.Func<System.ArraySegment<byte>, // data
                                         int, // message type
                                         bool, // end of message
                                         CancellationToken, // cancel
                                         Task>;
+
     public class OwinWebsocketWrapper : WebSocket
     {
         private WebSocketSendAsync _wsSendAsync;
         private WebSocketCloseAsync _wsCloseAsync;
         private CancellationToken _wsCallCancelled;
         private WebSocketReceiveAsync _wsRecieveAsync;
+        private WebSocketState _stateGuess = WebSocketState.Open;
+        private WebSocketCloseStatus? _closeStatus;
+        private string _closeStatusDescription;
 
         public OwinWebsocketWrapper(IDictionary<string, object> ws)
         {
@@ -47,29 +44,35 @@ namespace ObservableWebsockets.Internal
             _wsCloseAsync = (WebSocketCloseAsync)ws["websocket.CloseAsync"];
             _wsCallCancelled = (CancellationToken)ws["websocket.CallCancelled"];
             _wsRecieveAsync = (WebSocketReceiveAsync)ws["websocket.ReceiveAsync"];
+            ws.TryGetValue("websocket.SubProtocol", out var sp);
+            SubProtocol = sp as string;
         }
 
-        public override WebSocketCloseStatus? CloseStatus => throw new NotImplementedException();
+        public override WebSocketCloseStatus? CloseStatus => _closeStatus;
 
-        public override string CloseStatusDescription => throw new NotImplementedException();
+        public override string CloseStatusDescription => _closeStatusDescription;
 
-        public override string SubProtocol => throw new NotImplementedException();
+        public override string SubProtocol { get; }
 
-        public override WebSocketState State => throw new NotImplementedException();
+        public override WebSocketState State => _stateGuess;
 
-        public override void Abort()
-        {
+        public override void Abort() => throw new NotImplementedException();
+
+        public override Task CloseOutputAsync(WebSocketCloseStatus closeStatus, string statusDescription, CancellationToken cancellationToken) =>
             throw new NotImplementedException();
-        }
 
-        public override Task CloseAsync(WebSocketCloseStatus closeStatus, string statusDescription, CancellationToken cancellationToken)
+        public override async Task CloseAsync(WebSocketCloseStatus closeStatus, string statusDescription, CancellationToken cancellationToken)
         {
-            return _wsCloseAsync((int)closeStatus, statusDescription, cancellationToken);
-        }
-
-        public override Task CloseOutputAsync(WebSocketCloseStatus closeStatus, string statusDescription, CancellationToken cancellationToken)
-        {
-            return _wsCloseAsync((int)closeStatus, statusDescription, cancellationToken);
+            try
+            {
+                await _wsCloseAsync(MapCloseStatus(closeStatus), statusDescription, cancellationToken);
+                _closeStatus = closeStatus;
+                _closeStatusDescription = statusDescription;
+            }
+            finally
+            {
+                _stateGuess = WebSocketState.Closed;
+            }
         }
 
         public override void Dispose()
@@ -78,13 +81,59 @@ namespace ObservableWebsockets.Internal
 
         public override async Task<WebSocketReceiveResult> ReceiveAsync(ArraySegment<byte> buffer, CancellationToken cancellationToken)
         {
-            var r=await _wsRecieveAsync(buffer, cancellationToken);
-            return new WebSocketReceiveResult(r.Item1, (WebSocketMessageType)r.Item3, r.Item2);
+            try
+            {
+                var r = await _wsRecieveAsync(buffer, cancellationToken);
+                WebSocketMessageType wsmt = MapWebSocketMessageType(r.Item1);
+                if (wsmt == WebSocketMessageType.Close)
+                {
+                    _stateGuess = WebSocketState.CloseReceived;
+                }
+
+                return new WebSocketReceiveResult(r.Item3, wsmt, r.Item2);
+            }
+            catch
+            {
+                _stateGuess = WebSocketState.Aborted;
+                throw;
+            }
         }
 
-        public override Task SendAsync(ArraySegment<byte> buffer, WebSocketMessageType messageType, bool endOfMessage, CancellationToken cancellationToken)
+        public override async Task SendAsync(ArraySegment<byte> buffer, WebSocketMessageType messageType, bool endOfMessage, CancellationToken cancellationToken)
         {
-            return _wsSendAsync(buffer, (int)messageType, endOfMessage, cancellationToken);
+            try
+            {
+                await _wsSendAsync(buffer, MapWebSocketMessageType(messageType), endOfMessage, cancellationToken);
+            }
+            catch
+            {
+                _stateGuess = WebSocketState.Aborted;
+                throw;
+            }
         }
+
+        private static int MapWebSocketMessageType(WebSocketMessageType t)
+        {
+            switch (t)
+            {
+                case WebSocketMessageType.Text: return 1;
+                case WebSocketMessageType.Binary: return 2;
+                case WebSocketMessageType.Close: return 3;
+                default: return default;
+            }
+        }
+
+        private static WebSocketMessageType MapWebSocketMessageType(int r)
+        {
+            switch (r)
+            {
+                case 1: return WebSocketMessageType.Text;
+                case 2: return WebSocketMessageType.Binary;
+                case 3: return WebSocketMessageType.Close;
+                default: return default;
+            }
+        }
+
+        private static int MapCloseStatus(WebSocketCloseStatus closeStatus) => (int)closeStatus;
     }
 }
