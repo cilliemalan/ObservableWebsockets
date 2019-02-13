@@ -327,5 +327,88 @@ namespace ObservableWebsockets.Tests.NetCore
                 await Assert.ThrowsAnyAsync<WebSocketException>(() => ws.ConnectAsync(new Uri($"ws://{host}/theincorrectpath"), default));
             }
         }
+
+#if OWIN
+
+        [Fact(DisplayName = "Messages sent from the client are observed on the server when using OWIN websockets")]
+        public async Task OwinWebsocketsTest()
+        {
+            var host = GetHost();
+            var connectionReceived = Trigger.Create<string>("Never connected");
+            var messageReceived = Trigger.Create<string>("Message never received");
+
+            using (BuildAppAsync(host, c => { c.ForceOwinWebsockets = true; }, ws =>
+             {
+                 connectionReceived.Mark(ws.Path);
+                 ws.Take(1).Subscribe(m => messageReceived.Mark(m.message.Decode()));
+             }))
+            {
+                var ws = new ClientWebSocket();
+                await ws.ConnectAsync(new Uri($"ws://{host}/thepath"), default);
+
+                await ws.SendTextAsync("Hello World");
+                Assert.Equal("/thepath", await connectionReceived);
+                Assert.Equal("Hello World", await messageReceived);
+
+                await ws.CloseAsync();
+            }
+        }
+
+        [Fact(DisplayName = "When no messages are sent, the server still receives the close message when using OWIN websockets")]
+        public async Task OpenCloseOWINTest()
+        {
+            var host = GetHost();
+            var connectionReceived = Trigger.Create<string>("Never connected");
+            var closeMessageReceived = Trigger.Create("Close message never received");
+            var completedReceived = Trigger.Create("Complete never received");
+            var numMessagesReceived = Trigger.Create<int>("never got number of messages");
+
+            using (BuildAppAsync(host, c => { c.ForceOwinWebsockets = true; }, ws =>
+            {
+                connectionReceived.Mark(ws.Path);
+                ws.Where(x => x.messageType == WebSocketMessageType.Close).Subscribe(m => closeMessageReceived.Mark());
+                ws.Subscribe(_ => { }, completedReceived.Mark);
+                ws.Count().Subscribe(numMessagesReceived.Mark);
+            }))
+            {
+                var ws = new ClientWebSocket();
+                await ws.ConnectAsync(new Uri($"ws://{host}/thepath"), default);
+
+                await ws.CloseAsync();
+                await completedReceived;
+                Assert.Equal(1, await numMessagesReceived);
+            }
+        }
+
+        [Fact(DisplayName = "The server can send a message to the client immediately when using OWIN websockets")]
+        public async Task ServerMessageOWINTest()
+        {
+            var host = GetHost();
+            var connectionReceived = Trigger.Create<string>("Never connected");
+            var closeMessageReceived = Trigger.Create("Close message never received");
+            var completedReceived = Trigger.Create("Complete never received");
+            var numMessagesReceived = Trigger.Create<int>("never got number of messages");
+
+            using (BuildAppAsync(host, c => { c.ForceOwinWebsockets = true; }, ws =>
+            {
+                connectionReceived.Mark(ws.Path);
+                ws.Send(Encoding.UTF8.GetBytes("From Server"), WebSocketMessageType.Text, true);
+                ws.Where(x => x.messageType == WebSocketMessageType.Close).Subscribe(m => closeMessageReceived.Mark());
+                ws.Subscribe(_ => { }, completedReceived.Mark);
+                ws.Count().Subscribe(numMessagesReceived.Mark);
+            }))
+            {
+                var ws = new ClientWebSocket();
+                await ws.ConnectAsync(new Uri($"ws://{host}/thepath"), default);
+
+                var msg = await ws.ReceiveAsync();
+                Assert.Equal("From Server", msg);
+
+                await ws.CloseAsync();
+                await completedReceived;
+                Assert.Equal(1, await numMessagesReceived);
+            }
+        }
+#endif
     }
 }
