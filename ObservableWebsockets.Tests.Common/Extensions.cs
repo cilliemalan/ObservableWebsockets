@@ -30,5 +30,12 @@ namespace ObservableWebsockets
             if (r.MessageType != WebSocketMessageType.Text) throw new InvalidOperationException("Expected a string message");
             return Encoding.UTF8.GetString(buff.Array, 0, r.Count);
         }
+
+        public static async Task ReceiveCloseAsync(this WebSocket ws)
+        {
+            ArraySegment<byte> buff = new ArraySegment<byte>(new byte[10]);
+            var r = await ws.ReceiveAsync(buff, new CancellationTokenSource(5000).Token);
+            if (r.MessageType != WebSocketMessageType.Close) throw new InvalidOperationException("Expected a close message");
+        }
     }
 }
