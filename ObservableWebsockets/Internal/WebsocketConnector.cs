@@ -19,7 +19,7 @@ namespace ObservableWebsockets.Internal
             CancellationTokenSource cts = new CancellationTokenSource();
             var cancellationToken = cts.Token;
 
-            var incomingMessages = new Subject<(byte[] message, WebSocketMessageType messageType, bool endOfMessage)>();
+            var incomingMessages = new Subject<(ArraySegment<byte> message, WebSocketMessageType messageType, bool endOfMessage)>();
 
             bool hasCompleted = false;
             cancellationToken.Register(() =>
@@ -37,14 +37,23 @@ namespace ObservableWebsockets.Internal
 
             async Task ReadLoopAsync()
             {
-                var buffer = new ArraySegment<byte>(new byte[1024]);
                 while (!isClosed())
                 {
-                    var receiveStatus = await webSocket.ReceiveAsync(buffer, cancellationToken);
-                    byte[] smallBuffer = new byte[receiveStatus.Count];
-                    Array.Copy(buffer.Array, 0, smallBuffer, 0, receiveStatus.Count);
-                    incomingMessages.OnNext((smallBuffer, receiveStatus.MessageType, receiveStatus.EndOfMessage));
+                    try
+                    {
+                        var buffer = new ArraySegment<byte>(new byte[1024]);
+                        var receiveStatus = await webSocket.ReceiveAsync(buffer, cancellationToken);
+                        var properSegment = new ArraySegment<byte>(buffer.Array, 0, receiveStatus.Count);
+                        incomingMessages.OnNext((properSegment, receiveStatus.MessageType, receiveStatus.EndOfMessage));
+                    }
+                    catch (WebSocketException)
+                    {
+                        if (!isClosed()) throw;
+                    }
                 }
+
+                // signal that we are closed
+                cts.Cancel();
             }
 
             async Task WriteLoopAsync()
@@ -55,11 +64,18 @@ namespace ObservableWebsockets.Internal
                     {
                         if (nextMessage != null)
                         {
-                            var msg = nextMessage.Item1;
-                            var tp = nextMessage.Item2;
-                            var end = nextMessage.Item3;
-                            var arraySegment = new ArraySegment<byte>(msg);
-                            await webSocket.SendAsync(arraySegment, tp, true, cancellationToken);
+                            try
+                            {
+                                var msg = nextMessage.Item1;
+                                var tp = nextMessage.Item2;
+                                var end = nextMessage.Item3;
+                                var arraySegment = new ArraySegment<byte>(msg);
+                                await webSocket.SendAsync(arraySegment, tp, true, cancellationToken);
+                            }
+                            catch (WebSocketException)
+                            {
+                                if (!isClosed()) throw;
+                            }
                         }
                     }
                     else
@@ -73,6 +89,9 @@ namespace ObservableWebsockets.Internal
                         }
                     }
                 }
+
+                // signal that we are closed just in case it hasn't been triggered already
+                cts.Cancel();
             }
 
             Exception caughtException = null;
