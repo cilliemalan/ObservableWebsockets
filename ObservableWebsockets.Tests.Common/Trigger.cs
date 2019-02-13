@@ -25,14 +25,14 @@ namespace ObservableWebsockets.Tests.Common
         public TaskAwaiter GetAwaiter()
         {
             CancellationTokenSource cts = new CancellationTokenSource(5000);
-            cts.Token.Register(() => _tcs.TrySetCanceled(cts.Token));
+            cts.Token.Register(() => _tcs.TrySetException(new Exception(_message)));
             return ((Task)_tcs.Task).GetAwaiter();
         }
 
         protected TaskAwaiter<T> GetAwaiterInternal<T>()
         {
             CancellationTokenSource cts = new CancellationTokenSource(5000);
-            cts.Token.Register(() => _tcs.TrySetCanceled(cts.Token));
+            cts.Token.Register(() => _tcs.TrySetException(new Exception(_message)));
 
             async Task<T> CastTask() => (T)await _tcs.Task;
             return CastTask().GetAwaiter();
