@@ -5,6 +5,10 @@ VisualStudioVersion = 15.0.28307.271
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ObservableWebsockets", "ObservableWebsockets\ObservableWebsockets.csproj", "{DC1D7D38-3451-4057-9E15-2E2277549BB7}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ObservableWebsockets.Tests.NetCore", "ObservableWebsockets.Tests.NetCore\ObservableWebsockets.Tests.NetCore.csproj", "{5A1F873B-658E-40CB-8ADF-CC0053E1347F}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ObservableWebsockets.Tests.Owin", "ObservableWebsockets.Tests.Owin\ObservableWebsockets.Tests.Owin.csproj", "{00538C01-85BB-41F2-A051-548EB3C7F219}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -15,6 +19,14 @@ Global
 		{DC1D7D38-3451-4057-9E15-2E2277549BB7}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{DC1D7D38-3451-4057-9E15-2E2277549BB7}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{DC1D7D38-3451-4057-9E15-2E2277549BB7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5A1F873B-658E-40CB-8ADF-CC0053E1347F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5A1F873B-658E-40CB-8ADF-CC0053E1347F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5A1F873B-658E-40CB-8ADF-CC0053E1347F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5A1F873B-658E-40CB-8ADF-CC0053E1347F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{00538C01-85BB-41F2-A051-548EB3C7F219}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{00538C01-85BB-41F2-A051-548EB3C7F219}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{00538C01-85BB-41F2-A051-548EB3C7F219}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{00538C01-85BB-41F2-A051-548EB3C7F219}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
