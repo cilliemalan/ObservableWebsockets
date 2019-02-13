@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks>net45;netstandard1.3;netstandard2.0</TargetFrameworks>
+    <TargetFrameworks>net45;net47;netstandard1.3;netstandard2.0</TargetFrameworks>
     <Authors>Cillié Malan</Authors>
     <Company />
     <PackageTags>Rx Reactive Observable Websockets</PackageTags>
@@ -11,9 +11,12 @@
     <LangVersion>latest</LangVersion>
   </PropertyGroup>
 
-
   <PropertyGroup Condition="'$(TargetFramework)'=='net45'">
     <DefineConstants>OWIN;$(AdditionalConstants)</DefineConstants>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(TargetFramework)'=='net47'">
+    <DefineConstants>OWIN;HAS_VALUETUPLE;$(AdditionalConstants)</DefineConstants>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(TargetFramework)' == 'netstandard1.3'">
@@ -21,10 +24,14 @@
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
-    <DefineConstants>NETSTANDARD;NETSTANDARD2_0;$(AdditionalConstants)</DefineConstants>
+    <DefineConstants>NETSTANDARD;NETSTANDARD2_0;HAS_VALUETUPLE;$(AdditionalConstants)</DefineConstants>
   </PropertyGroup>
 
   <ItemGroup Condition="'$(TargetFramework)'=='net45'">
+    <PackageReference Include="Owin" Version="1.0" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(TargetFramework)'=='net47'">
     <PackageReference Include="Owin" Version="1.0" />
   </ItemGroup>
 

@@ -19,7 +19,7 @@ namespace ObservableWebsockets.Internal
             CancellationTokenSource cts = new CancellationTokenSource();
             var cancellationToken = cts.Token;
 
-            Subject<string> incomingMessages = new Subject<string>();
+            var incomingMessages = new Subject<(byte[] message, WebSocketMessageType messageType, bool endOfMessage)>();
 
             bool hasCompleted = false;
             cancellationToken.Register(() =>
@@ -37,41 +37,13 @@ namespace ObservableWebsockets.Internal
 
             async Task ReadLoopAsync()
             {
-                MemoryStream bigBuffer = null;
                 var buffer = new ArraySegment<byte>(new byte[1024]);
                 while (!isClosed())
                 {
                     var receiveStatus = await webSocket.ReceiveAsync(buffer, cancellationToken);
-
-                    if (receiveStatus.EndOfMessage)
-                    {
-                        ArraySegment<byte> bufferToUse;
-                        int numBytesInBuffer;
-                        if (bigBuffer != null)
-                        {
-                            bigBuffer.Write(buffer.Array, 0, receiveStatus.Count);
-                            numBytesInBuffer = (int)bigBuffer.Length;
-#if NETSTANDARD
-                            bigBuffer.TryGetBuffer(out bufferToUse);
-#else
-                            byte[] msbuffer = bigBuffer.GetBuffer();
-                            bufferToUse = new ArraySegment<byte>(msbuffer, 0, numBytesInBuffer);
-#endif
-                        }
-                        else
-                        {
-                            bufferToUse = buffer;
-                            numBytesInBuffer = receiveStatus.Count;
-                        }
-
-                        var str = Encoding.UTF8.GetString(bufferToUse.Array, 0, numBytesInBuffer);
-                        incomingMessages.OnNext(str);
-                    }
-                    else
-                    {
-                        if (bigBuffer == null) bigBuffer = new MemoryStream();
-                        bigBuffer.Write(buffer.Array, 0, receiveStatus.Count);
-                    }
+                    byte[] smallBuffer = new byte[receiveStatus.Count];
+                    Array.Copy(buffer.Array, 0, smallBuffer, 0, receiveStatus.Count);
+                    incomingMessages.OnNext((smallBuffer, receiveStatus.MessageType, receiveStatus.EndOfMessage));
                 }
             }
 

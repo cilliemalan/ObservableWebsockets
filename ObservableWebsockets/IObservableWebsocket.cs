@@ -10,7 +10,11 @@ namespace ObservableWebsockets
     /// <summary>
     /// An observable interface to a websocket connection. Subscribers will receive incoming messages.
     /// </summary>
-    public interface IObservableWebsocket : IObservable<string>
+#if HAS_VALUETUPLE
+    public interface IObservableWebsocket : IObservable<(byte[] message,WebSocketMessageType messageType,bool endOfMessage)>
+#else
+    public interface IObservableWebsocket : IObservable<Tuple<byte[], WebSocketMessageType, bool>>
+#endif
     {
         /// <summary>
         /// The path on which the websocket connection was established.
