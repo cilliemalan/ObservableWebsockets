@@ -20,6 +20,7 @@ namespace ObservableWebsockets.Internal
                 if (Interlocked.CompareExchange(ref this.tcs, newTcs, tcs) == tcs)
                 {
                     tcs.SetResult(0);
+                    break;
                 }
             }
         }
