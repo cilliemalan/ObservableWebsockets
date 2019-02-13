@@ -3,13 +3,19 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
 VisualStudioVersion = 15.0.28307.271
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ObservableWebsockets", "ObservableWebsockets\ObservableWebsockets.csproj", "{DC1D7D38-3451-4057-9E15-2E2277549BB7}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ObservableWebsockets", "ObservableWebsockets\ObservableWebsockets.csproj", "{DC1D7D38-3451-4057-9E15-2E2277549BB7}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ObservableWebsockets.Tests.NetCore", "ObservableWebsockets.Tests.NetCore\ObservableWebsockets.Tests.NetCore.csproj", "{5A1F873B-658E-40CB-8ADF-CC0053E1347F}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ObservableWebsockets.Tests.NetCore", "ObservableWebsockets.Tests.NetCore\ObservableWebsockets.Tests.NetCore.csproj", "{5A1F873B-658E-40CB-8ADF-CC0053E1347F}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ObservableWebsockets.Tests.Owin", "ObservableWebsockets.Tests.Owin\ObservableWebsockets.Tests.Owin.csproj", "{00538C01-85BB-41F2-A051-548EB3C7F219}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ObservableWebsockets.Tests.Common", "ObservableWebsockets.Tests.Common\ObservableWebsockets.Tests.Common.csproj", "{6137FD7F-1C18-47E8-872C-5174B8D5C6B2}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ObservableWebsockets.Tests.Common", "ObservableWebsockets.Tests.Common\ObservableWebsockets.Tests.Common.csproj", "{6137FD7F-1C18-47E8-872C-5174B8D5C6B2}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{61EA89C1-5057-45F6-A24A-05D8C25E9098}"
+	ProjectSection(SolutionItems) = preProject
+		LICENSE = LICENSE
+		README.md = README.md
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
