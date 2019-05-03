@@ -11,16 +11,15 @@ namespace ObservableWebsockets.Internal
     {
         private Action<byte[], WebSocketMessageType, bool> _sender;
         private Func<IObserver<(ArraySegment<byte> message, WebSocketMessageType messageType, bool endOfMessage)>, IDisposable> _subscribe;
+        private RequestContext _ctx;
 
-        public string Path { get; }
-        
         public WebSocketHandler(Action<byte[], WebSocketMessageType, bool> sender,
-            string path,
+            RequestContext ctx,
             Func<IObserver<(ArraySegment<byte> message, WebSocketMessageType messageType, bool endOfMessage)>, IDisposable> subscribe)
         {
             _sender = sender;
             _subscribe = subscribe;
-            Path = path;
+            _ctx = ctx;
         }
 
         public void Send(byte[] message, WebSocketMessageType messageType, bool endOfMessage) => _sender(message, messageType, endOfMessage);
@@ -48,6 +47,40 @@ namespace ObservableWebsockets.Internal
             public void OnNext((ArraySegment<byte> message, WebSocketMessageType messageType, bool endOfMessage) value) =>
                 _observer.OnNext(Tuple.Create(value.message, value.messageType, value.endOfMessage));
         }
+#endif
+
+        public string LocalIpAddress => _ctx.LocalIpAddress;
+
+        public int LocalPort => _ctx.LocalPort;
+
+        public string RemoteIpAddress => _ctx.RemoteIpAddress;
+
+        public int RemotePort => _ctx.RemotePort;
+
+        public string Host => _ctx.Host;
+
+        public string Path => _ctx.Path;
+
+        public string PathBase => _ctx.PathBase;
+
+        public string QueryString => _ctx.QueryString;
+
+        public string Scheme => _ctx.Scheme;
+
+        public string Method => _ctx.Method;
+
+        public bool IsSecure => _ctx.IsSecure;
+
+        public string Url => _ctx.Url;
+
+        public string Protocol => _ctx.Protocol;
+
+        public IDictionary<string, string> Headers => _ctx.Headers;
+
+#if NETSTANDARD
+        public Microsoft.AspNetCore.Http.IHeaderDictionary RawHeaders => _ctx.RawHeaders;
+#else
+        public IDictionary<string, string[]> RawHeaders => _ctx.RawHeaders;
 #endif
     }
 }

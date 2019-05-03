@@ -50,8 +50,8 @@ namespace ObservableWebsockets.Internal
                     acceptOptions["websocket.SubProtocol"] = wsProtocolOpt;
                 }
 
-
-                accept(acceptOptions, (ws) => AcceptSocketAsync(path, ws));
+                var ctx = new OwinRequestContext(env);
+                accept(acceptOptions, (ws) => AcceptSocketAsync(ctx, ws));
                 env["owin.ResponseStatusCode"] = (int)HttpStatusCode.SwitchingProtocols;
             }
             else
@@ -60,17 +60,17 @@ namespace ObservableWebsockets.Internal
             }
         }
 
-        private async Task AcceptSocketAsync(string path, IDictionary<string, object> ws)
+        private async Task AcceptSocketAsync(OwinRequestContext ctx, IDictionary<string, object> ws)
         {
             if (!_options.ForceOwinWebsockets && ws.TryGetValue("System.Net.WebSockets.WebSocketContext", out var _wsctx))
             {
                 WebSocketContext wsctx = (WebSocketContext)_wsctx;
-                await WebsocketConnector.HandleWebsocketAsync(path, wsctx.WebSocket, _options);
+                await WebsocketConnector.HandleWebsocketAsync(ctx, wsctx.WebSocket, _options);
             }
             else
             {
                 var wrapper = new OwinWebsocketWrapper(ws);
-                await WebsocketConnector.HandleWebsocketAsync(path, wrapper, _options);
+                await WebsocketConnector.HandleWebsocketAsync(ctx, wrapper, _options);
             }
         }
     }

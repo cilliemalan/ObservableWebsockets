@@ -1,4 +1,5 @@
-﻿using System;
+﻿#if OWIN
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.WebSockets;
@@ -137,3 +138,4 @@ namespace ObservableWebsockets.Internal
         private static int MapCloseStatus(WebSocketCloseStatus closeStatus) => (int)closeStatus;
     }
 }
+#endif

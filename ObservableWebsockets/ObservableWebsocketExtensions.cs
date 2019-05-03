@@ -79,7 +79,7 @@ namespace Microsoft.AspNetCore.Builder
                 {
                     var webSocket = await context.WebSockets.AcceptWebSocketAsync();
 
-                    await WebsocketConnector.HandleWebsocketAsync(context.Request.Path, webSocket, options);
+                    await WebsocketConnector.HandleWebsocketAsync(new NetStandardRequestContext(context), webSocket, options);
                 }
                 else
                 {

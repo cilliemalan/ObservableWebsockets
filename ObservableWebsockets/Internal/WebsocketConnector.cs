@@ -11,7 +11,7 @@ namespace ObservableWebsockets.Internal
 {
     internal class WebsocketConnector
     {
-        internal static async Task HandleWebsocketAsync(string path, WebSocket webSocket, ObservableWebsocketOptions options)
+        internal static async Task HandleWebsocketAsync(RequestContext ctx, WebSocket webSocket, ObservableWebsocketOptions options)
         {
             var messageQueue = new System.Collections.Concurrent.ConcurrentQueue<Tuple<byte[], WebSocketMessageType, bool>>();
             var messageSentAre = new AsyncAutoResetEvent();
@@ -135,7 +135,7 @@ namespace ObservableWebsockets.Internal
                         messageQueue?.Enqueue(Tuple.Create(m, t, e));
                         messageSentAre.Trigger();
                     },
-                    path,
+                    ctx,
                     incomingMessages.Subscribe);
 
                 await Task.Yield();
