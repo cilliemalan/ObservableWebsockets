@@ -9,9 +9,6 @@ namespace ObservableWebsockets
 {
     public static class Extensions
     {
-        public static string Decode(this ArraySegment<byte> bytes) =>
-            Encoding.UTF8.GetString(bytes.Array, bytes.Offset, bytes.Count);
-
         public static Task SendTextAsync(this WebSocket ws, string message)
         {
             var bytes = Encoding.UTF8.GetBytes(message);
