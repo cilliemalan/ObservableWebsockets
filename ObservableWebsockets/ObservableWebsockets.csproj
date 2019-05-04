@@ -3,12 +3,14 @@
   <PropertyGroup>
     <TargetFrameworks>net45;net47;netstandard1.3;netstandard2.0</TargetFrameworks>
     <Authors>Cillié Malan</Authors>
+    <Copyright>Copyright 2019 (c) Cillié Malan</Copyright>
     <Company />
     <PackageTags>Rx Reactive Observable Websockets</PackageTags>
     <Description>An observable interface to websocket connections for OWIN and ASP.Net Core.</Description>
     <Summary>An observable interface to websocket connections for OWIN and ASP.Net Core.</Summary>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <LangVersion>latest</LangVersion>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(TargetFramework)'=='net45'">
